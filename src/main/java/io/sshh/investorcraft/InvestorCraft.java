@@ -1,8 +1,5 @@
 package io.sshh.investorcraft;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -13,6 +10,10 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
@@ -91,31 +92,31 @@ public class InvestorCraft extends JavaPlugin {
             log.info("Only players are supported for this Example Plugin, but you should not do this!!!");
             return true;
         }
-        
+
         if(!commandLabel.equals("invest")) {
             return false;
         }
 
         Player player = (Player) sender;
-        
+
         if(args.length == 3) {
-            
+
             String symbol = args[1].toUpperCase();
             int amt = Integer.parseInt(args[2]);
-            
+
             if(symbol.length() == 0 || amt <= 0) {
                 sender.sendMessage("Invalid parameters.");
                 return true;
             }
-            
+
             double pricePer = priceAPI.getMCPrice(symbol);
             double priceOverall = pricePer * amt;
-            
+
             if(priceOverall <= 0) {
                 sender.sendMessage("Invalid Purchase.");
                 return true;
             }
-            
+
             EconomyResponse er;
             if(args[0].equals("buy")) {
                 er = econ.withdrawPlayer(player, priceOverall);
@@ -128,11 +129,11 @@ public class InvestorCraft extends JavaPlugin {
                         sender.sendMessage(String.format("You have sold %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
                 }
             }
-            
+
             return true;
-        
+
         } else if(args.length == 2 && args[0].equals("price")) {
-            
+
             String symbol = args[1].toUpperCase();
             double price = priceAPI.getMCPrice(symbol);
             if(price > 0) {
@@ -141,9 +142,9 @@ public class InvestorCraft extends JavaPlugin {
                 sender.sendMessage("Error fetching stock.");
             }
             return true;
-            
+
         } else if(args.length == 1 && args[0].equals("list")) {
-        
+
             FileConfiguration config = getConfig();
             ConfigurationSection accounts = config.getConfigurationSection("accounts." + player.getUniqueId());
             Map<String, Object> assets = accounts.getValues(true);
@@ -157,13 +158,13 @@ public class InvestorCraft extends JavaPlugin {
                 sender.sendMessage("You own no stocks.");
             }
             return true;
-        
+
         }
 
         return false;
 
     }
-    
+
     private boolean modifyShares(Player player, String symbol, double diff) {
         FileConfiguration config = getConfig();
         String path = String.format("accounts.%s.%s", player.getUniqueId(), symbol);
@@ -192,7 +193,7 @@ public class InvestorCraft extends JavaPlugin {
 }
 
 class PriceAPI {
-    
+
     private final static String BASE_URL = "https://www.alphavantage.co/";
     private String key;
 
@@ -222,7 +223,7 @@ class PriceAPI {
         if(data.isJsonNull()) return 0.0;
         return data.getAsDouble();
     }
-    
+
     public double getMCPrice(String symbol) {
         return (int)(getPrice(symbol) * 1000 * 100) / 100;
     }
