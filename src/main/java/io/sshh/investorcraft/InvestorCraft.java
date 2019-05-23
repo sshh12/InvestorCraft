@@ -10,6 +10,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,6 +21,7 @@ import net.milkbowl.vault.permission.Permission;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -106,7 +108,7 @@ public class InvestorCraft extends JavaPlugin {
                 return true;
             }
             
-            double pricePer = (int)(priceAPI.getPrice(symbol) * 1000 * 100) / 100;
+            double pricePer = priceAPI.getMCPrice(symbol);
             double priceOverall = pricePer * amt;
             
             if(priceOverall <= 0) {
@@ -132,7 +134,7 @@ public class InvestorCraft extends JavaPlugin {
         } else if(args.length == 2 && args[0].equals("price")) {
             
             String symbol = args[1].toUpperCase();
-            double price = (int)(priceAPI.getPrice(symbol) * 1000 * 100) / 100;
+            double price = priceAPI.getMCPrice(symbol);
             if(price > 0) {
                 sender.sendMessage(String.format("%s is %s per share.", symbol, econ.format(price)));
             } else {
@@ -140,6 +142,22 @@ public class InvestorCraft extends JavaPlugin {
             }
             return true;
             
+        } else if(args.length == 1 && args[0].equals("list")) {
+        
+            FileConfiguration config = getConfig();
+            ConfigurationSection accounts = config.getConfigurationSection("accounts." + player.getUniqueId());
+            Map<String, Object> assets = accounts.getValues(true);
+            for(String symbol : assets.keySet()) {
+                double amt = (Double)assets.get(symbol);
+                if(amt <= 0) continue;
+                double pricePer = priceAPI.getMCPrice(symbol);
+                sender.sendMessage(String.format("* %s (%d) - %s / %s", symbol, (int)amt, econ.format(amt * pricePer), econ.format(pricePer)));
+            }
+            if(assets.isEmpty()) {
+                sender.sendMessage("You own no stocks.");
+            }
+            return true;
+        
         }
 
         return false;
@@ -151,7 +169,7 @@ public class InvestorCraft extends JavaPlugin {
         String path = String.format("accounts.%s.%s", player.getUniqueId(), symbol);
         config.addDefault(path, 0);
         double newValue = config.getDouble(path) + diff;
-        if(diff > 0 || (diff < 0 && newValue > 0)) {
+        if(diff > 0 || (diff < 0 && newValue >= 0)) {
             config.set(path, newValue);
             saveConfig();
             return true;
@@ -203,6 +221,10 @@ class PriceAPI {
         JsonElement data = fetch(url).getAsJsonObject("Global Quote").get("05. price");
         if(data.isJsonNull()) return 0.0;
         return data.getAsDouble();
+    }
+    
+    public double getMCPrice(String symbol) {
+        return (int)(getPrice(symbol) * 1000 * 100) / 100;
     }
 
 }
