@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -80,36 +81,59 @@ public class InvestorCraft extends JavaPlugin {
         saveConfig();
     }
 
+    @Override
     public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args) {
 
         if (!(sender instanceof Player)) {
             log.info("Only players are supported for this Example Plugin, but you should not do this!!!");
             return true;
         }
-
-        Player player = (Player) sender;
-
-        if (command.getLabel().equals("test-economy")) {
-            // Lets give the player 1.05 currency (note that SOME economic plugins require rounding!)
-            sender.sendMessage(String.format("You have %s %f", econ.format(econ.getBalance(player.getName())), priceAPI.getPrice("MSFT")));
-            EconomyResponse r = econ.depositPlayer(player, 1.05);
-            if (r.transactionSuccess()) {
-                sender.sendMessage(String.format("You were given %s and now have %s", econ.format(r.amount), econ.format(r.balance)));
-            } else {
-                sender.sendMessage(String.format("An error occured: %s", r.errorMessage));
-            }
-            return true;
-        } else if (command.getLabel().equals("test-permission")) {
-            // Lets test if user has the node "example.plugin.awesome" to determine if they are awesome or just suck
-            if (perms.has(player, "example.plugin.awesome")) {
-                sender.sendMessage("You are awesome!");
-            } else {
-                sender.sendMessage("You suck!");
-            }
-            return true;
-        } else {
+        
+        if(!commandLabel.equals("invest")) {
             return false;
         }
+
+        Player player = (Player) sender;
+        
+        if(args.length == 3) {
+            
+            String symbol = args[1].toUpperCase();
+            int amt = Integer.parseInt(args[2]);
+            
+            if(symbol.length() == 0 || amt <= 0) {
+                sender.sendMessage("Invalid parameters.");
+                return true;
+            }
+            
+            double pricePer = (int)(priceAPI.getPrice(symbol) * 1000 * 100) / 100;
+            double priceOverall = pricePer * amt;
+            
+            if(priceOverall <= 0 || econ.getBalance(player.getName()) < priceOverall) {
+                sender.sendMessage("Invalid Purchase.");
+                return true;
+            }
+        
+            if(args[0].equals("buy")) {
+                econ.withdrawPlayer(player, priceOverall);
+                sender.sendMessage(String.format("You have purchased %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
+            } else if(args[0].equals("sell")) {
+                econ.depositPlayer(player, priceOverall);
+                sender.sendMessage(String.format("You have sold %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
+            }
+            
+            return true;
+        
+        }
+
+//        sender.sendMessage(String.format("You have %s %f", econ.format(econ.getBalance(player.getName())), priceAPI.getPrice("MSFT")));
+//        EconomyResponse r = econ.depositPlayer(player, 1.05);
+//        if (r.transactionSuccess()) {
+//            sender.sendMessage(String.format("You were given %s and now have %s", econ.format(r.amount), econ.format(r.balance)));
+//        } else {
+//            sender.sendMessage(String.format("An error occured: %s", r.errorMessage));
+//        }
+        
+        return false;
 
     }
 
@@ -154,7 +178,9 @@ class PriceAPI {
 
     public double getPrice(String symbol) {
         String url = String.format("%squery?function=GLOBAL_QUOTE&symbol=%s&apikey=%s", BASE_URL, symbol, key);
-        return fetch(url).getAsJsonObject("Global Quote").get("05. price").getAsDouble();
+        JsonElement data = fetch(url).getAsJsonObject("Global Quote").get("05. price");
+        if(data.isJsonNull()) return 0.0;
+        return data.getAsDouble();
     }
 
 }

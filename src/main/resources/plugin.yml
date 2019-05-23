@@ -5,6 +5,11 @@ description: Investing in Minecraft
 depend: [Vault]
 
 commands:
-    test-economy:
-        usage: /<command>
+    invest:
+        usage: |
+            /<command> : Shows Help.
+            /<command> buy [symbol] [amt] : Buy stock.
+            /<command> sell [symbol] [amt] : Sell stock.
+            /<command> price [symbol] : Check stock price.
+            /<command> list : View owned stocks.
         description: Invest.
