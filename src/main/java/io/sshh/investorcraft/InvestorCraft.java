@@ -20,6 +20,7 @@ import net.milkbowl.vault.permission.Permission;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -108,33 +109,54 @@ public class InvestorCraft extends JavaPlugin {
             double pricePer = (int)(priceAPI.getPrice(symbol) * 1000 * 100) / 100;
             double priceOverall = pricePer * amt;
             
-            if(priceOverall <= 0 || econ.getBalance(player.getName()) < priceOverall) {
+            if(priceOverall <= 0) {
                 sender.sendMessage("Invalid Purchase.");
                 return true;
             }
-        
+            
+            EconomyResponse er;
             if(args[0].equals("buy")) {
-                econ.withdrawPlayer(player, priceOverall);
-                sender.sendMessage(String.format("You have purchased %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
+                er = econ.withdrawPlayer(player, priceOverall);
+                if(er.transactionSuccess() && modifyShares(player, symbol, amt))
+                    sender.sendMessage(String.format("You have purchased %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
             } else if(args[0].equals("sell")) {
-                econ.depositPlayer(player, priceOverall);
-                sender.sendMessage(String.format("You have sold %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
+                if(modifyShares(player, symbol, -amt)) {
+                    er = econ.depositPlayer(player, priceOverall);
+                    if(er.transactionSuccess())
+                        sender.sendMessage(String.format("You have sold %d share(s) of %s, for %s.", amt, symbol, econ.format(priceOverall)));
+                }
             }
             
             return true;
         
+        } else if(args.length == 2 && args[0].equals("price")) {
+            
+            String symbol = args[1].toUpperCase();
+            double price = (int)(priceAPI.getPrice(symbol) * 1000 * 100) / 100;
+            if(price > 0) {
+                sender.sendMessage(String.format("%s is %s per share.", symbol, econ.format(price)));
+            } else {
+                sender.sendMessage("Error fetching stock.");
+            }
+            return true;
+            
         }
 
-//        sender.sendMessage(String.format("You have %s %f", econ.format(econ.getBalance(player.getName())), priceAPI.getPrice("MSFT")));
-//        EconomyResponse r = econ.depositPlayer(player, 1.05);
-//        if (r.transactionSuccess()) {
-//            sender.sendMessage(String.format("You were given %s and now have %s", econ.format(r.amount), econ.format(r.balance)));
-//        } else {
-//            sender.sendMessage(String.format("An error occured: %s", r.errorMessage));
-//        }
-        
         return false;
 
+    }
+    
+    private boolean modifyShares(Player player, String symbol, double diff) {
+        FileConfiguration config = getConfig();
+        String path = String.format("accounts.%s.%s", player.getUniqueId(), symbol);
+        config.addDefault(path, 0);
+        double newValue = config.getDouble(path) + diff;
+        if(diff > 0 || (diff < 0 && newValue > 0)) {
+            config.set(path, newValue);
+            saveConfig();
+            return true;
+        }
+        return false;
     }
 
     public static Economy getEconomy() {
