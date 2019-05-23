@@ -1,0 +1,10 @@
+name: InvestorCraft
+version: 1.0
+main: io.sshh.investorcraft.InvestorCraft
+description: Investing in Minecraft
+depend: [Vault]
+
+commands:
+    test-economy:
+        usage: /<command>
+        description: Invest.
